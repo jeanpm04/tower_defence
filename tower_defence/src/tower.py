@@ -2,38 +2,49 @@
 
 import pygame
 import math
-from settings import *
 from projectile import Projectile
 
 class Tower:
     def __init__(self, x, y):
         self.x = x
         self.y = y
-        self.range = 100  # distancia máxima a la que puede atacar
-        self.color = (0, 200, 0)
-        self.radius = 20
-        self.fire_rate = 60  # 1 disparo por segundo (si el juego corre a 60 FPS)
-        self.cooldown = 0  # frames restantes antes de poder disparar nuevamente
+        self.range = 150
+        self.damage = 25
+        self.fire_rate = 60  # frames
+        self.timer = 0
+        self.target = None
 
-    def draw(self, screen):
-        pygame.draw.circle(screen, self.color, (self.x, self.y), self.radius)
-        # Visualización del rango de ataque (opcional pero útil para el jugador)
-        pygame.draw.circle(screen, (0, 200, 200), (self.x, self.y), self.range, 1)
+        # Cargar imagen de la torre
+        self.image_original = pygame.image.load("assets/tower.png").convert_alpha()
+        self.image_original = pygame.transform.scale(self.image_original, (64, 64))
 
-    def is_in_range(self, enemy):
-        # Calcula si el enemigo está dentro del rango
-        dist = math.hypot(self.x - enemy.x, self.y - enemy.y)
-        return dist <= self.range
+    def find_target(self, enemies):
+        closest_enemy = None
+        closest_dist = float('inf')
+        for enemy in enemies:
+            if enemy.alive:
+                dist = math.hypot(enemy.x - self.x, enemy.y - self.y)
+                if dist < closest_dist and dist <= self.range:
+                    closest_dist = dist
+                    closest_enemy = enemy
+        self.target = closest_enemy
 
     def attack(self, enemies, projectiles):
-        if self.cooldown > 0:
-            self.cooldown -= 1
-            return
+        self.timer += 1
+        self.find_target(enemies)
+        if self.target and self.timer >= self.fire_rate:
+            projectile = Projectile(self.x, self.y, self.target, self.damage)
+            projectiles.append(projectile)
+            self.timer = 0
 
-        for enemy in enemies:
-            if self.is_in_range(enemy):
-                # Dispara un proyectil hacia el primer enemigo que esté en rango
-                projectile = Projectile(self.x, self.y, enemy)
-                projectiles.append(projectile)
-                self.cooldown = self.fire_rate
-                break
+    def draw(self, screen):
+        if self.target:
+            dx = self.target.x - self.x
+            dy = self.target.y - self.y
+            angle = math.degrees(math.atan2(-dy, dx)) - 90  # compensación por sprite hacia arriba
+        else:
+            angle = 0
+
+        rotated_image = pygame.transform.rotate(self.image_original, angle)
+        rect = rotated_image.get_rect(center=(self.x, self.y))
+        screen.blit(rotated_image, rect.topleft)

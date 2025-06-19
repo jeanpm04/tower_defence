@@ -12,5 +12,5 @@ GAME_TITLE = "Tower Defence"
 
 STARTING_MONEY = 300
 TOWER_COST = 100
-REWARD_PER_KILL = 50
+REWARD_PER_KILL = 25  # Dinero que se gana por eliminar un enemigo
 STARTING_LIVES = 10
