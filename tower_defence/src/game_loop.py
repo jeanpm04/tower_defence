@@ -4,7 +4,6 @@ import math
 import time
 import random
 from settings import *
-from map import Map
 from tower import Tower
 from projectile import Projectile
 from wave_manager import WaveManager
@@ -42,33 +41,20 @@ def play_sequence_puzzle(screen):
         pygame.K_DOWN: "↓"
     }
 
-    # Generar secuencia aleatoria
     sequence = random.choices(directions, k=4)
-
-    # Mostrar la secuencia con pausas visibles
     for key in sequence:
         screen.fill(BLACK)
-
-        # Dibujar símbolo
         symbol_text = font.render(symbols[key], True, (255, 255, 0))
-        screen.blit(
-            symbol_text,
-            (
-                SCREEN_WIDTH // 2 - symbol_text.get_width() // 2,
-                SCREEN_HEIGHT // 2 - symbol_text.get_height() // 2
-            )
-        )
+        screen.blit(symbol_text, (
+            SCREEN_WIDTH // 2 - symbol_text.get_width() // 2,
+            SCREEN_HEIGHT // 2 - symbol_text.get_height() // 2
+        ))
         pygame.display.flip()
-
-        # Mostrar por 700 ms
         pygame.time.delay(700)
-
-        # Pausa entre símbolos (pantalla negra)
         screen.fill(BLACK)
         pygame.display.flip()
         pygame.time.delay(300)
 
-    # Esperar input del usuario
     index = 0
     waiting = True
     while waiting:
@@ -76,7 +62,6 @@ def play_sequence_puzzle(screen):
         prompt = font.render("Repite la secuencia...", True, WHITE)
         screen.blit(prompt, (SCREEN_WIDTH // 2 - prompt.get_width() // 2, 100))
         pygame.display.flip()
-
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 return "exit"
@@ -88,9 +73,18 @@ def play_sequence_puzzle(screen):
                 else:
                     return "fail"
 
-def run_game(screen):
+def run_game(screen, game_map):
+    # Cargar íconos y escalarlos
+    heart_img = pygame.image.load("assets/Heart.gif").convert_alpha()
+    heart_img = pygame.transform.scale(heart_img, (24, 24))
+
+    money_img = pygame.image.load("assets/money.png").convert_alpha()
+    money_img = pygame.transform.scale(money_img, (24, 24))
+
+    wave_img = pygame.image.load("assets/Icon7.png").convert_alpha()
+    wave_img = pygame.transform.scale(wave_img, (24, 24))
+
     clock = pygame.time.Clock()
-    game_map = Map()
     towers = []
     projectiles = []
     wave_manager = WaveManager(game_map.path)
@@ -168,20 +162,22 @@ def run_game(screen):
             for text in floating_texts:
                 font = pygame.font.SysFont(None, 20)
                 surf = font.render(text["text"], True, (255, 255, 0))
-                screen.blit(surf, (text["x"], text["y"] - (30 - text["timer"])))
+                screen.blit(surf, (text["x"], text["y"] - (30 - text["timer"])) )
                 text["timer"] -= 1
             floating_texts = [t for t in floating_texts if t["timer"] > 0]
 
             mouse_x, mouse_y = pygame.mouse.get_pos()
             invalid_position = not is_valid_position(mouse_x, mouse_y, towers, game_map)
-
             color = (255, 0, 0) if invalid_position or money < TOWER_COST else (0, 255, 0)
             pygame.draw.circle(screen, color, (mouse_x, mouse_y), 20, 2)
 
             font = pygame.font.SysFont(None, 30)
-            screen.blit(font.render(f"Wave: {wave_manager.wave_number}", True, BLACK), (10, 10))
-            screen.blit(font.render(f"Money: ${money}", True, BLACK), (10, 40))
-            screen.blit(font.render(f"Lives: {lives}", True, BLACK), (10, 70))
+            screen.blit(wave_img, (10, 10))
+            screen.blit(font.render(f"{wave_manager.wave_number}", True, BLACK), (40, 12))
+            screen.blit(money_img, (10, 40))
+            screen.blit(font.render(f"${money}", True, BLACK), (40, 42))
+            screen.blit(heart_img, (10, 70))
+            screen.blit(font.render(f"{lives}", True, BLACK), (40, 72))
             screen.blit(font.render(f"Speed: x{speed_multiplier}", True, (0, 0, 255)), (10, 100))
 
             if wave_manager.total_enemies > 0:
@@ -194,15 +190,24 @@ def run_game(screen):
                 game_over = True
 
         elif paused:
+            overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
+            overlay.fill((0, 0, 0, 180))
+            screen.blit(overlay, (0, 0))
+
             font = pygame.font.SysFont(None, 60)
             pause_text = font.render("PAUSADO", True, (255, 0, 0))
             screen.blit(pause_text, (SCREEN_WIDTH // 2 - pause_text.get_width() // 2, 150))
+
             menu_button = pygame.Rect(SCREEN_WIDTH // 2 - 120, 250, 240, 50)
             pygame.draw.rect(screen, (50, 50, 50), menu_button)
             pygame.draw.rect(screen, (255, 255, 255), menu_button, 2)
             btn_font = pygame.font.SysFont(None, 32)
             btn_text = btn_font.render("Volver al Menú", True, (255, 255, 255))
-            screen.blit(btn_text, (menu_button.x + 120 - btn_text.get_width() // 2, menu_button.y + 10))
+            screen.blit(btn_text, (
+                menu_button.x + menu_button.width // 2 - btn_text.get_width() // 2,
+                menu_button.y + menu_button.height // 2 - btn_text.get_height() // 2
+            ))
+
             pygame.display.flip()
 
             for event in pygame.event.get():
@@ -215,6 +220,10 @@ def run_game(screen):
                         return "menu"
 
         if game_over or victory:
+            overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
+            overlay.fill((0, 0, 0, 180))
+            screen.blit(overlay, (0, 0))
+
             total_time = int(time.time() - total_start_time)
             font = pygame.font.SysFont(None, 50)
             result = "VICTORY!" if victory else "GAME OVER"
@@ -223,16 +232,16 @@ def run_game(screen):
             screen.blit(result_text, (SCREEN_WIDTH // 2 - result_text.get_width() // 2, 150))
 
             score_font = pygame.font.SysFont(None, 35)
-            screen.blit(score_font.render(f"Tiempo total: {total_time}s", True, BLACK), (200, 250))
-            screen.blit(score_font.render(f"Dinero final: ${money}", True, BLACK), (200, 300))
-            screen.blit(score_font.render(f"Enemigos eliminados: {enemies_killed}", True, BLACK), (200, 350))
-            screen.blit(score_font.render(f"Vidas restantes: {lives}", True, BLACK), (200, 400))
-            screen.blit(score_font.render("Presiona R para reiniciar", True, (50, 50, 50)), (200, 480))
+            screen.blit(score_font.render(f"Tiempo total: {total_time}s", True, WHITE), (200, 250))
+            screen.blit(score_font.render(f"Dinero final: ${money}", True, WHITE), (200, 300))
+            screen.blit(score_font.render(f"Enemigos eliminados: {enemies_killed}", True, WHITE), (200, 350))
+            screen.blit(score_font.render(f"Vidas restantes: {lives}", True, WHITE), (200, 400))
+            screen.blit(score_font.render("Presiona R para reiniciar", True, (200, 200, 200)), (200, 480))
             pygame.display.flip()
 
             keys = pygame.key.get_pressed()
             if keys[pygame.K_r]:
-                return run_game(screen)
+                return run_game(screen, game_map)
 
         pygame.display.flip()
         clock.tick(FPS * speed_multiplier)
